@@ -393,3 +393,17 @@ function MT:CompanionOnEdictUse()
 		CompanionWarn(data.name, GetString(MT_COMP_EDICT_WARN))
 	end
 end
+
+----------------------------------------
+-- COMPANION LOCKPICK PERK
+----------------------------------------
+
+-- EVENT_LOCKPICK_BREAK_PREVENTED fires when the companion perk suppresses
+-- a lockpick break (e.g. Tanlorin's Finesse). Active companion defId will
+-- be 0 when triggered via the unlocked collectible with no companion summoned.
+function MT:RegisterCompanionPerkEvents()
+    EVENT_MANAGER:RegisterForEvent(MT.name .. "_LockpickBreakPrevented",
+        EVENT_LOCKPICK_BREAK_PREVENTED, function()
+            MT:TrackLockpickBreakPrevented()
+        end)
+end
