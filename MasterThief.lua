@@ -389,6 +389,7 @@ function MasterThief:SetStealMode(iStealthState)
 							
 							if pickpocketItemCount == 1 then
 								MasterThief:TrackSuccessfulPickpocket()
+								MT:RecordPickpocketForReticle()
 							end
 							
 							zo_callLater(function()
@@ -586,6 +587,8 @@ function MT:SetEvents()
 		EVENT_MANAGER:RegisterForEvent(MT.name .. "_CompanionArrest", EVENT_JUSTICE_BEING_ARRESTED, function()
 			MT:CompanionOnArrested()
 		end)
+		
+		MT:RegisterCompanionPerkEvents()
 end
 
 ----------------------------------------
@@ -720,6 +723,7 @@ function MT:Initialize()
 		
 		-- Setup all event handlers
 		MT:SetEvents()
+		MT:InitPickpocketCounter()
 		
 		-- Initialize stealth mode if active
 		local stealthState = GetUnitStealthState("player")
