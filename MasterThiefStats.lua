@@ -31,6 +31,7 @@ MasterThief.SessionStatsDefault =
 	itemsLooted = 0,
 	itemsSkipped = 0,
 	bladeOfWoeKills = 0,
+	lockpickBreaksPrevented = 0,
 }
 
 MasterThief.LifetimeStatsDefault = 
@@ -55,6 +56,7 @@ MasterThief.LifetimeStatsDefault =
 	itemsSkipped = 0,
 	thievesTrovesLooted = 0,
 	bladeOfWoeKills = 0,
+	lockpickBreaksPrevented = 0,
 }
 
 ----------------------------------------
@@ -269,6 +271,19 @@ function MasterThief:TrackBladeOfWoeKill()
 end
 
 ----------------------------------------
+-- Tracking Functions - Lockpicking (companion perk)
+----------------------------------------
+function MasterThief:TrackLockpickBreakPrevented()
+    if not MasterThief.SessionStats or not MasterThief.SavedVarsLifetimeStats then return end
+    MasterThief.SessionStats.lockpickBreaksPrevented = (MasterThief.SessionStats.lockpickBreaksPrevented or 0) + 1
+    MasterThief.SavedVarsLifetimeStats.lockpickBreaksPrevented = (MasterThief.SavedVarsLifetimeStats.lockpickBreaksPrevented or 0) + 1
+    if MasterThief.lootlistWindow and not MasterThief.lootlistWindow:IsHidden() then
+        MasterThief:UpdateSessionStatsDisplay()
+        MasterThief:UpdateLifetimeStatsDisplay()
+    end
+end
+
+----------------------------------------
 -- Reset Functions
 ----------------------------------------
 function MasterThief:ResetSessionStats()
@@ -291,6 +306,7 @@ function MasterThief:ResetSessionStats()
         highestBounty = 0,
         highestValueItemLooted = { link = "", value = 0 },
         bladeOfWoeKills = 0,
+		lockpickBreaksPrevented = 0,
     }
     
     self:UpdateSessionStatsDisplay()
@@ -317,6 +333,7 @@ function MasterThief:ResetLifetimeStats()
     MasterThief.SavedVarsLifetimeStats.highestValueItemLooted = { link = "", value = 0 }
     MasterThief.SavedVarsLifetimeStats.thievesTrovesLooted = 0
     MasterThief.SavedVarsLifetimeStats.bladeOfWoeKills = 0
+	MasterThief.SavedVarsLifetimeStats.lockpickBreaksPrevented = 0
     
     self:UpdateLifetimeStatsDisplay()
     d("[MasterThief] Lifetime statistics reset")
