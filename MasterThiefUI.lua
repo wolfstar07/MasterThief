@@ -52,11 +52,7 @@ function MasterThief:CreateLootlistWindow()
     -- Background
     local bg = WINDOW_MANAGER:CreateControl(nil, win, CT_BACKDROP)
     bg:SetAnchorFill(win)
-    bg:SetCenterColor(0.05, 0.05, 0.05, 0.95)
-	
-	-- Disable backdrop edge safely (no border, no errors)
-	bg:SetEdgeTexture("EsoUI/Art/Miscellaneous/white_pixel.dds", 1, 1)
-	bg:SetEdgeColor(0, 0, 0, 0)
+    ApplyTemplateToControl(bg, "ZO_DefaultBackdrop")
 
     -- Title
     local title = WINDOW_MANAGER:CreateControl(nil, win, CT_LABEL)
@@ -77,18 +73,18 @@ function MasterThief:CreateLootlistWindow()
 
     self.lootlistWindow = win
 
-    -- Panels (important!)
+    -- Panels
     self:CreatePanels(win)
-    self:CreateTabs(win)
+    self:CreateNavButtons(win)
 
-    -- Default tab AFTER everything exists
-    self:SelectTab("loot")
+    -- Default view: loot list
+    self:ShowLootPanel()
 end
 
 function MasterThief:CreatePanels(win)
     -- Loot panel
     local lootPanel = WINDOW_MANAGER:CreateControl(nil, win, CT_CONTROL)
-    lootPanel:SetAnchor(TOPLEFT, win, TOPLEFT, 10, 50)
+    lootPanel:SetAnchor(TOPLEFT, win, TOPLEFT, 10, 88)
     lootPanel:SetAnchor(BOTTOMRIGHT, win, BOTTOMRIGHT, -10, -60)
     lootPanel:SetHidden(false)
 
@@ -138,170 +134,106 @@ function MasterThief:CreatePanels(win)
     
     -- Session Stats Panel
     local sessionStatsPanel = WINDOW_MANAGER:CreateControl(nil, statsPanel, CT_CONTROL)
-    sessionStatsPanel:SetAnchor(TOPLEFT, statsPanel, TOPLEFT, 10, 40)
+    sessionStatsPanel:SetAnchor(TOPLEFT, statsPanel, TOPLEFT, 10, 5)
     sessionStatsPanel:SetAnchor(BOTTOMRIGHT, statsPanel, BOTTOMRIGHT, -10, -10)
     sessionStatsPanel:SetHidden(false)  -- Show by default
     self.sessionStatsPanel = sessionStatsPanel
     
     -- Lifetime Stats Panel
     local lifetimeStatsPanel = WINDOW_MANAGER:CreateControl(nil, statsPanel, CT_CONTROL)
-    lifetimeStatsPanel:SetAnchor(TOPLEFT, statsPanel, TOPLEFT, 10, 40)
+    lifetimeStatsPanel:SetAnchor(TOPLEFT, statsPanel, TOPLEFT, 10, 5)
     lifetimeStatsPanel:SetAnchor(BOTTOMRIGHT, statsPanel, BOTTOMRIGHT, -10, -10)
     lifetimeStatsPanel:SetHidden(true)  -- Hidden by default
     self.lifetimeStatsPanel = lifetimeStatsPanel
-    
-    -- Create sub-tab buttons (Session / Lifetime)
-    self:CreateStatsSubTabs(statsPanel)
     
     -- Create the actual stats displays
     self:CreateSessionStatsDisplay(sessionStatsPanel)
     self:CreateLifetimeStatsDisplay(lifetimeStatsPanel)
 end
 
-function MasterThief:CreateTabs(win)
-    local tabContainer = WINDOW_MANAGER:CreateControl(nil, win, CT_CONTROL)
-    tabContainer:SetAnchor(BOTTOM, win, BOTTOM, 0, -10)
-    tabContainer:SetHeight(40)
+function MasterThief:CreateNavButtons(win)
+    local buttonWidth = 120
+    local buttonHeight = 30
 
-    self.tabs = {}
-
-    local function CreateTab(label, id, offsetX)
-        local btn = WINDOW_MANAGER:CreateControl(nil, tabContainer, CT_BUTTON)
-        btn:SetDimensions(120, 30)
-        btn:SetAnchor(CENTER, tabContainer, CENTER, offsetX, 0)
+    local function MakeButton(parent, label, offsetX, offsetY, anchorPoint)
+        local btn = WINDOW_MANAGER:CreateControl(nil, parent, CT_BUTTON)
+        btn:SetDimensions(buttonWidth, buttonHeight)
+        btn:SetAnchor(anchorPoint, parent, anchorPoint, offsetX, offsetY)
 		
-		-- Background (flat)
-		local bg = WINDOW_MANAGER:CreateControl(nil, btn, CT_BACKDROP)
-		bg:SetAnchorFill(btn)
-		bg:SetCenterColor(0.12, 0.12, 0.12, 0.95)
+		-- Background with ESO gold border
+        local bg = WINDOW_MANAGER:CreateControl(nil, btn, CT_BACKDROP)
+        bg:SetAnchorFill(btn)
+        ApplyTemplateToControl(bg, "ZO_DefaultBackdrop")
 
         local text = WINDOW_MANAGER:CreateControl(nil, btn, CT_LABEL)
         text:SetFont("$(PROSE_ANTIQUE_FONT)|20")
         text:SetText(label)
-        text:SetAnchor(CENTER)
+        text:SetDimensions(buttonWidth, buttonHeight)
+        text:SetAnchor(CENTER, btn, CENTER, 0, 0)
+        text:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+        text:SetVerticalAlignment(TEXT_ALIGN_CENTER)
 
-		btn.bg = bg
         btn.label = text
-		
-        btn:SetHandler("OnClicked", function()
-            self:SelectTab(id)
-        end)
-
-        self.tabs[id] = btn
+        return btn
     end
 
-    CreateTab("Loot List", "loot", -70)
-    CreateTab("Stats", "stats", 70)
-end
-
-function MasterThief:SelectTab(tabId)
-    -- Update tab appearance
-    for id, tab in pairs(self.tabs) do
-        if id == tabId then
-            -- Active tab - brighter
-            tab.bg:SetCenterColor(0.25, 0.25, 0.25, 0.95)
-            tab.label:SetColor(1, 0.85, 0, 1)  -- Gold
-        else
-            -- Inactive tab - darker
-            tab.bg:SetCenterColor(0.12, 0.12, 0.12, 0.95)
-            tab.label:SetColor(0.7, 0.7, 0.7, 1)  -- Gray
-        end
-    end
-    
-    -- Show/hide panels
-    if tabId == "loot" then
-        self.lootPanel:SetHidden(false)
-        self.statsPanel:SetHidden(true)
-    elseif tabId == "stats" then
-        self.lootPanel:SetHidden(true)
-        self.statsPanel:SetHidden(false)
-        
-        -- Refresh stats when showing stats tab
-        self:UpdateSessionStatsDisplay()
-        self:UpdateLifetimeStatsDisplay()
-    end
-end
-
-function MasterThief:CreateStatsSubTabs(statsPanel)
-    local buttonWidth = 100
-    local buttonHeight = 30
-    local spacing = 5
-    
-    -- Session Stats button
-    local sessionBtn = WINDOW_MANAGER:CreateControl(nil, statsPanel, CT_BUTTON)
-    sessionBtn:SetDimensions(buttonWidth, buttonHeight)
-    -- CENTER the buttons - offset left by half button width + half spacing
-    sessionBtn:SetAnchor(CENTER, statsPanel, TOP, -(buttonWidth/2 + spacing/2), 15)
-    
-    -- Background
-    local sessionBg = WINDOW_MANAGER:CreateControl(nil, sessionBtn, CT_BACKDROP)
-    sessionBg:SetAnchorFill(sessionBtn)
-    sessionBg:SetCenterColor(0.25, 0.25, 0.25, 0.95)  -- Active - lighter
-    sessionBg:SetEdgeColor(0.6, 0.6, 0.6, 1)
-    sessionBg:SetEdgeTexture("", 8, 1, 1)
-    
-    -- Label
-    local sessionLabel = WINDOW_MANAGER:CreateControl(nil, sessionBtn, CT_LABEL)
-    sessionLabel:SetFont("$(PROSE_ANTIQUE_FONT)|18")
-    sessionLabel:SetText("Session")
-    sessionLabel:SetAnchor(CENTER)
-    sessionLabel:SetColor(1, 0.85, 0, 1)  -- Start as active (gold)
-    
-    sessionBtn.bg = sessionBg
-    sessionBtn.label = sessionLabel
+    -- TOP: Session and Lifetime buttons (always visible, switch stats sub-tab)
+    local sessionBtn = MakeButton(win, "Session", -70, 55, TOP)
+    sessionBtn.label:SetColor(0.7, 0.7, 0.7, 1)  -- start inactive; ShowLootPanel sets final state
     sessionBtn:SetHandler("OnClicked", function()
-        self:SelectStatsSubTab("session")
+        self:ShowStatsPanel("session")
     end)
     self.sessionStatsTabButton = sessionBtn
     
-    -- Lifetime Stats button
-    local lifetimeBtn = WINDOW_MANAGER:CreateControl(nil, statsPanel, CT_BUTTON)
-    lifetimeBtn:SetDimensions(buttonWidth, buttonHeight)
-    lifetimeBtn:SetAnchor(LEFT, sessionBtn, RIGHT, spacing, 0)
-    
-    -- Background
-    local lifetimeBg = WINDOW_MANAGER:CreateControl(nil, lifetimeBtn, CT_BACKDROP)
-    lifetimeBg:SetAnchorFill(lifetimeBtn)
-    lifetimeBg:SetCenterColor(0.12, 0.12, 0.12, 0.95)  -- Inactive - darker (matches main tabs)
-    lifetimeBg:SetEdgeColor(0.6, 0.6, 0.6, 1)
-    lifetimeBg:SetEdgeTexture("", 8, 1, 1)
-    
-    -- Label
-    local lifetimeLabel = WINDOW_MANAGER:CreateControl(nil, lifetimeBtn, CT_LABEL)
-    lifetimeLabel:SetFont("$(PROSE_ANTIQUE_FONT)|18")
-    lifetimeLabel:SetText("Lifetime")
-    lifetimeLabel:SetAnchor(CENTER)
-    lifetimeLabel:SetColor(0.7, 0.7, 0.7, 1)  -- Start as inactive (gray)
-    
-    lifetimeBtn.bg = lifetimeBg
-    lifetimeBtn.label = lifetimeLabel
+    local lifetimeBtn = MakeButton(win, "Lifetime", 70, 55, TOP)
+    lifetimeBtn.label:SetColor(0.7, 0.7, 0.7, 1)  -- Start as inactive (gray)
     lifetimeBtn:SetHandler("OnClicked", function()
-        self:SelectStatsSubTab("lifetime")
+        self:ShowStatsPanel("lifetime")
     end)
     self.lifetimeStatsTabButton = lifetimeBtn
+
+    -- BOTTOM: single centered Loot List button
+    local lootBtn = MakeButton(win, "Loot List", 0, -10, BOTTOM)
+    lootBtn.label:SetColor(1, 0.85, 0, 1)  -- start active (gold) since loot panel is default
+    lootBtn:SetHandler("OnClicked", function()
+        self:ShowLootPanel()
+    end)
+    self.lootListTabButton = lootBtn
 end
 
-function MasterThief:SelectStatsSubTab(subTab)
+-- Show the loot list panel; top buttons go gray, loot button goes gold
+function MasterThief:ShowLootPanel()
+    self.lootPanel:SetHidden(false)
+    self.statsPanel:SetHidden(true)
+
+    self.lootListTabButton.label:SetColor(1, 0.85, 0, 1)
+    self.sessionStatsTabButton.label:SetColor(0.7, 0.7, 0.7, 1)
+    self.lifetimeStatsTabButton.label:SetColor(0.7, 0.7, 0.7, 1)
+
+    self:RefreshLootlistWindow()
+end
+
+-- Show the stats panel and select a sub-tab; loot button goes gray, chosen stat button goes gold
+function MasterThief:ShowStatsPanel(subTab)
+    self.lootPanel:SetHidden(true)
+    self.statsPanel:SetHidden(false)
+
+    self.lootListTabButton.label:SetColor(0.7, 0.7, 0.7, 1)
+	
     if subTab == "session" then
         self.sessionStatsPanel:SetHidden(false)
         self.lifetimeStatsPanel:SetHidden(true)
         
-        -- Update button appearance
-        self.sessionStatsTabButton.bg:SetCenterColor(0.25, 0.25, 0.25, 0.95)  -- Active - lighter
         self.sessionStatsTabButton.label:SetColor(1, 0.85, 0, 1)  -- Active - gold
-        
-        self.lifetimeStatsTabButton.bg:SetCenterColor(0.12, 0.12, 0.12, 0.95)  -- Inactive - darker
         self.lifetimeStatsTabButton.label:SetColor(0.7, 0.7, 0.7, 1)  -- Inactive - gray
+        self:UpdateSessionStatsDisplay()
     else
         self.sessionStatsPanel:SetHidden(true)
         self.lifetimeStatsPanel:SetHidden(false)
         
-        -- Update button appearance
-        self.sessionStatsTabButton.bg:SetCenterColor(0.12, 0.12, 0.12, 0.95)  -- Inactive - darker
         self.sessionStatsTabButton.label:SetColor(0.7, 0.7, 0.7, 1)  -- Inactive - gray
-        
-        self.lifetimeStatsTabButton.bg:SetCenterColor(0.25, 0.25, 0.25, 0.95)  -- Active - lighter
         self.lifetimeStatsTabButton.label:SetColor(1, 0.85, 0, 1)  -- Active - gold
+        self:UpdateLifetimeStatsDisplay()
     end
 end
 
@@ -368,6 +300,7 @@ function MasterThief:CreateSessionStatsDisplay(panel)
 		successfulPickpockets = CreateStatRow(GetString(MT_STATS_PICKPOCKETS), "MT_SessionStat_Pickpockets", true),
         safeboxesLockpicked = CreateStatRow(GetString(MT_STATS_SAFEBOXES), "MT_SessionStat_Safeboxes", true),
         doorsLockpicked = CreateStatRow(GetString(MT_STATS_DOORS), "MT_SessionStat_Doors", true),
+		lockpickBreaksPrevented = CreateStatRow(GetString(MT_STATS_LOCKPICK_BREAKS_PREVENTED), "MT_SessionStat_LockpickBreaks", true),
 		bladeOfWoeKills = CreateStatRow(GetString(MT_STATS_BOW_KILLS), "MT_SessionStat_BoW", true),
         deathsByGuards = CreateStatRow(GetString(MT_STATS_GUARD_DEATHS), "MT_SessionStat_Guards", true),
         totalFencedGold = CreateStatRow(GetString(MT_STATS_GOLD_FENCED), "MT_SessionStat_Fenced", true),
@@ -410,15 +343,15 @@ function MasterThief:CreateSessionStatsDisplay(panel)
     -- Background with border
     local resetBg = WINDOW_MANAGER:CreateControl(nil, resetBtn, CT_BACKDROP)
     resetBg:SetAnchorFill(resetBtn)
-    resetBg:SetCenterColor(0.2, 0.2, 0.2, 0.9)
-    resetBg:SetEdgeColor(0.6, 0.6, 0.6, 1)
-    resetBg:SetEdgeTexture("", 8, 1, 1)
+    ApplyTemplateToControl(resetBg, "ZO_DefaultBackdrop")
     
     -- Label
     local resetLabel = WINDOW_MANAGER:CreateControl(nil, resetBtn, CT_LABEL)
     resetLabel:SetFont("$(PROSE_ANTIQUE_FONT)|18")
     resetLabel:SetText(GetString(MT_STATS_RESET_SESSION))
     resetLabel:SetAnchor(CENTER)
+    resetLabel:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+    resetLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
     resetLabel:SetColor(1, 0.85, 0, 1)
     
     resetBtn:SetHandler("OnClicked", function()
@@ -499,6 +432,7 @@ function MasterThief:CreateLifetimeStatsDisplay(panel)
 		successfulPickpockets = CreateStatRow(GetString(MT_STATS_PICKPOCKETS), "MT_LifetimeStat_Pickpockets", true),
         safeboxesLockpicked = CreateStatRow(GetString(MT_STATS_SAFEBOXES), "MT_LifetimeStat_Safeboxes", true),
         doorsLockpicked = CreateStatRow(GetString(MT_STATS_DOORS), "MT_LifetimeStat_Doors", true),
+		lockpickBreaksPrevented = CreateStatRow(GetString(MT_STATS_LOCKPICK_BREAKS_PREVENTED), "MT_LifetimeStat_LockpickBreaks", true),
 		bladeOfWoeKills = CreateStatRow(GetString(MT_STATS_BOW_KILLS), "MT_LifetimeStat_BoW", true),
         deathsByGuards = CreateStatRow(GetString(MT_STATS_GUARD_DEATHS), "MT_LifetimeStat_Guards", true),
 		thievesTrovesLooted = CreateStatRow(GetString(MT_STATS_TROVES), "MT_LifetimeStat_Troves", true),
@@ -541,15 +475,15 @@ function MasterThief:CreateLifetimeStatsDisplay(panel)
     -- Background with border
     local resetBg = WINDOW_MANAGER:CreateControl(nil, resetBtn, CT_BACKDROP)
     resetBg:SetAnchorFill(resetBtn)
-    resetBg:SetCenterColor(0.2, 0.2, 0.2, 0.9)
-    resetBg:SetEdgeColor(0.6, 0.6, 0.6, 1)
-    resetBg:SetEdgeTexture("", 8, 1, 1)
-    
+    ApplyTemplateToControl(resetBg, "ZO_DefaultBackdrop")
+ 
     -- Label
     local resetLabel = WINDOW_MANAGER:CreateControl(nil, resetBtn, CT_LABEL)
     resetLabel:SetFont("$(PROSE_ANTIQUE_FONT)|18")
     resetLabel:SetText(GetString(MT_STATS_RESET_LIFETIME))
     resetLabel:SetAnchor(CENTER)
+resetLabel:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+    resetLabel:SetVerticalAlignment(TEXT_ALIGN_CENTER)
     resetLabel:SetColor(1, 0.85, 0, 1)
     
     resetBtn:SetHandler("OnClicked", function()
@@ -599,6 +533,7 @@ function MasterThief:UpdateSessionStatsDisplay()
 	self.sessionStatsLabels.edictsLooted:SetText(tostring(stats.edictsLooted or 0))
 	self.sessionStatsLabels.safeboxesLockpicked:SetText(tostring(MasterThief.SessionStats.safeboxesLockpicked or 0))
 	self.sessionStatsLabels.doorsLockpicked:SetText(tostring(MasterThief.SessionStats.doorsLockpicked or 0))
+	self.sessionStatsLabels.lockpickBreaksPrevented:SetText(tostring(MasterThief.SessionStats.lockpickBreaksPrevented or 0))
 	self.sessionStatsLabels.deathsByGuards:SetText(tostring(MasterThief.SessionStats.deathsByGuards or 0))
 	self.sessionStatsLabels.totalFencedGold:SetText(tostring(MasterThief.SessionStats.totalFencedGold or 0) .. "g")
 	self.sessionStatsLabels.goldSpentLaundering:SetText(tostring(MasterThief.SessionStats.goldSpentLaundering or 0) .. "g")
@@ -630,6 +565,7 @@ function MasterThief:UpdateLifetimeStatsDisplay()
     self.lifetimeStatsLabels.researchPortfoliosLooted:SetText(tostring(stats.researchPortfoliosLooted or 0))
 	self.lifetimeStatsLabels.safeboxesLockpicked:SetText(tostring(stats.safeboxesLockpicked or 0))
 	self.lifetimeStatsLabels.doorsLockpicked:SetText(tostring(stats.doorsLockpicked or 0))
+	self.lifetimeStatsLabels.lockpickBreaksPrevented:SetText(tostring(stats.lockpickBreaksPrevented or 0))
 	self.lifetimeStatsLabels.edictsLooted:SetText(tostring(stats.edictsLooted or 0))
 	self.lifetimeStatsLabels.thievesTrovesLooted:SetText(tostring(stats.thievesTrovesLooted or 0))
 	self.lifetimeStatsLabels.deathsByGuards:SetText(tostring(stats.deathsByGuards or 0))
